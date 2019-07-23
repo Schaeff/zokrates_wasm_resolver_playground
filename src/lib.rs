@@ -1,12 +1,15 @@
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::console;
 
 // the path to a file, just for clarity here
 type Path = String;
 
 // some zokrates source, just for clarity
 type Source = String;
+
+#[wasm_bindgen]
+extern "C" {
+    fn resolve(p: Path) -> Source;
+}
 
 // This is a mock of the zokrates API with some changes.
 // Using Strings not buffers
@@ -42,30 +45,16 @@ mod zokrates {
 #[wasm_bindgen]
 /// this is the function that we expose to the user, and to which the user can pass their own resolver
 /// they pass their source and a resolver like `s.compile("def main() -> (): return", resolve)`
-pub fn compile(source: JsValue, resolver: JsValue) -> JsValue {
+pub fn compile(source: JsValue) -> JsValue {
     // Here we create a rust closure which calls the passed resolver when called
     // it is assumed that `resolver` is actually a function with one variable, it is the responsibility of the caller (say remix) to enforce that
-    let resolve = |a: Path| -> Result<Source, ()> {
-        console::log_1(&JsValue::from_str(
-            "interpret passed value as function in rust",
-        ));
-        // we cast the js value to something we can call from rust (a `Function`) and call it
-        let res = resolver
-            .unchecked_into::<js_sys::Function>()
-            .call1(&JsValue::NULL, &JsValue::from(a))
-            .unwrap();
-        console::log_1(&JsValue::from_str(&format!(
-            "js call result in rust {:?}",
-            res
-        )));
-        Ok(res.as_string().unwrap())
-    };
+    let resolve_closure = |a: Path| -> Result<Source, ()> { Ok(resolve(a)) };
 
     // we call the zokrates compile function with our closure
     zokrates::compile(
         source.as_string().unwrap(),
         Some("path/to/main".to_string()),
-        Some(Box::new(resolve)),
+        Some(Box::new(resolve_closure)),
     )
     .unwrap()
     .into()

@@ -21,10 +21,3 @@ zokrates.then(z => z.compile("def main() -> (): return", resolve)).then(console.
 ```
 
 We only illustrate a way for the user to provide a callback for the resolver from the JS side, pretty much everything else is fake here.
-
-Note:
-There may be a more static way to do this with WASM `import`s, so using `extern` blocks in Rust.
-
-Related:
-https://github.com/rustwasm/wasm-bindgen/issues/858
-https://github.com/rustwasm/wasm-bindgen/issues/103
