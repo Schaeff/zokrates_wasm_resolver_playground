@@ -31,6 +31,10 @@ wasm-bindgen = "0.2.45"
 wee_alloc = { version = "0.4.2", optional = true }
 js-sys = "0.3.25"
 
+zokrates_core = { git = "https://github.com/ZoKrates/ZoKrates", branch = "simplify-resolver" }
+zokrates_field = { git = "https://github.com/ZoKrates/ZoKrates", branch = "simplify-resolver" }
+
+
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.
 [dependencies.web-sys]

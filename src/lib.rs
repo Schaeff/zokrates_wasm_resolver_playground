@@ -1,5 +1,7 @@
 use wasm_bindgen::prelude::*;
 
+type Location = String;
+
 // the path to a file, just for clarity here
 type Path = String;
 
@@ -7,40 +9,25 @@ type Path = String;
 type Source = String;
 
 #[wasm_bindgen]
-extern "C" {
-    fn resolve(p: Path) -> Source;
+pub struct ResolverResult {
+    source: Source,
+    location: Location,
 }
 
-// This is a mock of the zokrates API with some changes.
-// Using Strings not buffers
-// not using references
-mod zokrates {
-    use super::*;
-
-    // we change this from a function pointer to something that implements FnOnce as we need to support closures, see further down
-    // a resolver basically takes a path and returns the source at that path. Again, simplified here.
-    pub type Resolve = dyn FnOnce(Path) -> Result<Source, ()>;
-
-    // just mocking here, this is actually a struct in real life
-    pub type Prog = String;
-
-    pub fn compile(
-        _: String,
-        _: Option<String>,
-        resolve_option: Option<Box<Resolve>>,
-    ) -> Result<Prog, ()> {
-        match resolve_option {
-            Some(resolve) => {
-                // in the process of compiling, we may have to call resolve
-                let _ = resolve("path/to/dep".to_string());
-                // do some other things with the result...
-                // ...and eventually we return a program
-                Ok(String::from("<some program>"))
-            }
-            None => unreachable!(), // we assume that we have a resolver here so crash if we don't
-        }
+#[wasm_bindgen]
+impl ResolverResult {
+    pub fn new(source: Source, location: Location) -> Self {
+        ResolverResult { source, location }
     }
 }
+
+#[wasm_bindgen]
+extern "C" {
+    fn resolve(l: Location, p: Path) -> ResolverResult;
+}
+
+use zokrates_core::compile::compile as compile_core;
+use zokrates_field::field::FieldPrime;
 
 #[wasm_bindgen]
 /// this is the function that we expose to the user, and to which the user can pass their own resolver
@@ -48,15 +35,22 @@ mod zokrates {
 pub fn compile(source: JsValue) -> JsValue {
     // Here we create a rust closure which calls the passed resolver when called
     // it is assumed that `resolver` is actually a function with one variable, it is the responsibility of the caller (say remix) to enforce that
-    let resolve_closure = |a: Path| -> Result<Source, ()> { Ok(resolve(a)) };
+    fn resolve_closure<'a>(
+        l: Location,
+        p: Path,
+    ) -> Result<(Source, Location), zokrates_core::imports::Error> {
+        let res = resolve(l, p.to_string());
+        Ok((res.source, res.location))
+    };
 
     // we call the zokrates compile function with our closure
-    zokrates::compile(
+    compile_core::<FieldPrime, _>(
         source.as_string().unwrap(),
-        Some("path/to/main".to_string()),
-        Some(Box::new(resolve_closure)),
+        "path/to/main".to_string(),
+        Some(resolve_closure),
     )
     .unwrap()
+    .to_string()
     .into()
 }
 

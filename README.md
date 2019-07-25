@@ -17,7 +17,16 @@ npm start
 
 In the browser terminal, execute the following:
 ```js
-zokrates.then(z => z.compile("def main() -> (): return", resolve)).then(console.log)
+zokrates.compile("import \"/path/to/dep\" as dep\ndef main(field a, field b) -> (field):\nreturn a*b")
 ```
 
-We only illustrate a way for the user to provide a callback for the resolver from the JS side, pretty much everything else is fake here.
+The resolver is defined in `js/index.js` and is mocked to return `def main() -> ():\nreturn` for now.
+
+Right now the API of the resolver is:
+`fn resolve(l: Location, p: ImportPath) -> ResolverResult`
+Where `ResolverResult` is a js class with static method `new(s: SourceCode, l: Location)`
+
+We pass the current Location (the file the import was found in) and the import path (can be relative or absolute)
+We return the content of the file at the import path as well as its location.
+
+
